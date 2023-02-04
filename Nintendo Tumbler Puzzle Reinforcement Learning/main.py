@@ -1,8 +1,11 @@
 import copy
+import json
 from tensorflow import keras
 import numpy as np
 import random
 from Tumbler import Tumbler
+
+import sys
 
 # https://www.geeksforgeeks.org/implementing-neural-networks-using-tensorflow/
 
@@ -16,22 +19,24 @@ from Tumbler import Tumbler
 #         X[index] = offspring.scrub(table[temp])
 #         y[index] = offspring.reward
 
-def create_data():
+def Export():
     counter = [table[1], table[0], table[3], table[2], table[4]]
     history = np.full([data_size + 1], Tumbler(), dtype = Tumbler)
     history[0] = copy.deepcopy(state)
     i = 0
 
     for elem in history:
-        print(elem)
         for action in range(5):
             temp = copy.deepcopy(elem)
             temp.move(counter[action])
-            if not temp in history:
+            if temp.reward != 1_000 and not temp in history:
                 X[i] = temp.scrub(table[action])
-                print(temp.reward)
                 temp.reward += discount * elem.reward
+                if temp.reward == 1000:
+                    print(temp)
+                    print()
                 Y[i] = temp.reward
+
                 history[i + 1] = temp
                 i += 1
                 if not i % 100:
@@ -53,7 +58,7 @@ X = np.empty([data_size * 2, shape], dtype = np.int8)
 Y = np.empty([data_size * 2], dtype = np.float16)
 
 print("prefabricating data")
-create_data()
+Export()
 state.move(table[4])
 value = [0, 0, 0, 0, 1]
 

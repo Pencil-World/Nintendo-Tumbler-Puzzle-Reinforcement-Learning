@@ -1,3 +1,5 @@
+import copy
+import json
 import numpy as np
 
 class Tumbler:
@@ -65,8 +67,6 @@ class Tumbler:
             comboLower += self.lower[0][i].argmax() == self.lower[1][i].argmax()
             value += self.upper[0][i].argmax() == self.upper[1][i].argmax() == self.lower[0][i].argmax() == self.lower[1][i].argmax()
         self.reward = 1_000 if value == -15 else value + 1.5 * comboUpper + 1.5 * comboLower
-        if self.reward == 1_000:
-            print(self)
 
     def scrub(self, action):
         return np.concatenate([self.upper.flatten(), self.lower.flatten(), self.hidden.flatten(), [self.isUp], action])
