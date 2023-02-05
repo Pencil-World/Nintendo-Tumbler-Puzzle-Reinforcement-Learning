@@ -2,10 +2,17 @@ import copy
 import json
 import numpy as np
 
-class Tumbler:
-    def __init__(self, upper = None, lower = None, hidden = None, isUp = False):
+class Tumbler():
+    def __init__(self, upper = None, lower = None, hidden = None, isUp = False, dict = None):
+        if dict:
+            for key, val in dict.items():
+                if type(val) is list:
+                    val = np.array(val)
+                setattr(self, key, val)
+            return
+
         if not hidden:
-            self.isUp = None
+            self.reward = 0
             return
 
         self.upper = np.zeros([2, 5, 6])
@@ -26,8 +33,17 @@ class Tumbler:
         return f"[[{hidden}]]\n{upper}\n{lower}" if self.isUp else f"{upper}\n{lower}\n[[{hidden}]]"
 
     def __eq__(self, other):
-        return self.isUp != None and other.isUp != None and self.isUp == self.isUp and np.all(self.upper == other.upper) and np.all(self.lower == other.lower) and np.all(self.hidden == other.hidden)
+        return self.reward and other.reward and self.isUp == self.isUp and np.all(self.upper == other.upper) and np.all(self.lower == other.lower) and np.all(self.hidden == other.hidden)
 
+    @staticmethod
+    def json_dumps(object):
+        return json.dumps(object, default = lambda o: (o.tolist() if type(o) is np.ndarray else o.__dict__), 
+            sort_keys = True, indent = 4)
+
+    @staticmethod
+    def json_loads(object):
+        return Tumbler(dict = json.loads(object))
+    
     def move(self, action):
         if action[0]: # rotate upper to the left
             self.upper = np.roll(self.upper, -1, 1)
