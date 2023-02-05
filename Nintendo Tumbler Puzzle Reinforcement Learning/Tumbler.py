@@ -1,5 +1,5 @@
 import copy
-import json
+#import json
 import numpy as np
 
 class Tumbler():
@@ -35,14 +35,14 @@ class Tumbler():
     def __eq__(self, other):
         return self.reward and other.reward and self.isUp == self.isUp and np.all(self.upper == other.upper) and np.all(self.lower == other.lower) and np.all(self.hidden == other.hidden)
 
-    @staticmethod
-    def json_dumps(object):
-        return json.dumps(object, default = lambda o: (o.tolist() if type(o) is np.ndarray else o.__dict__), 
-            sort_keys = True, indent = 4)
+    #@staticmethod
+    #def json_dumps(object):
+    #    return json.dumps(object, default = lambda o: (o.tolist() if type(o) is np.ndarray else o.__dict__), 
+    #        sort_keys = True, indent = 4)
 
-    @staticmethod
-    def json_loads(object):
-        return Tumbler(dict = json.loads(object))
+    #@staticmethod
+    #def json_loads(object):
+    #    return Tumbler(dict = json.loads(object))
     
     def move(self, action):
         if action[0]: # rotate upper to the left
