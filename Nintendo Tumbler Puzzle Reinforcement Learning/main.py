@@ -3,29 +3,33 @@ from tensorflow import keras
 import numpy as np
 import random
 from Tumbler import Tumbler
-import csv
+
 import sys
 
 # https://www.geeksforgeeks.org/implementing-neural-networks-using-tensorflow/
 
 def Import():
+    print("Importing Data")
+
     #f = open("text.txt", "r")
     #i = f.read()
     #mode = keras.load_model('model.h5')
    
-    for elem in open("data.txt").read().split('{'):
-        if elem:
-            print('{' + elem)
-            val = Tumbler.json_loads('{' + elem)
-            print(val)
+    # use \n\n instead?
+    for elem in open("data.txt").read().split('}')[:-1]:
+        elem += '}'
+        #print(elem)
+        val = Tumbler.json_loads(elem)
+        print(val)
     #for index in range(data_size):
     #    X[index] = offspring.scrub(table[temp])
     #    y[index] = offspring.reward
 
 def Export():
+    print("Exporting Data")
+    
     counter = [table[1], table[0], table[3], table[2], table[4]]
     history = [Tumbler()] * (data_size + 5)
-
     temp = state
     for i in range(5):
         temp = copy.deepcopy(temp)
@@ -34,27 +38,26 @@ def Export():
         history[i] = temp
     i = 0
 
-    for elem in history:
-        for action in range(5):
-            temp = copy.deepcopy(elem)
-            temp.move(counter[action])
-            if not temp in history:
-                temp.reward += discount * elem.reward
-                X[i] = temp.scrub(table[action])
-                Y[i] = temp.reward
-                history[i + 5] = temp
+    with open('data.txt', 'w') as data:
+        for elem in history:
+            for action in range(5):
+                temp = copy.deepcopy(elem)
+                temp.move(counter[action])
+                if not temp in history:
+                    temp.reward += discount * elem.reward
+                    X[i] = temp.scrub(table[action])
+                    Y[i] = temp.reward
+                    history[i + 5] = temp
 
-                if temp.reward >= 1000:
-                    print(temp)
-                    print()
+                    if temp.reward >= 1000:
+                        print(temp)
+                        print()
 
-                i += 1
-                if not i % 100:
-                    print(Y[i - 100:i])
+                    data.write(Tumbler.json_dumps(temp))
+                    i += 1
                     if i == data_size:
                         return
-        
-        #json magic here
+                    data.write("\n\n")
 
 table = [[1, 0, 0, 0, 0], [0, 1, 0, 0, 0], [0, 0, 1, 0, 0], [0, 0, 0, 1, 0], [0, 0, 0, 0, 1]]
 state = Tumbler([[1, 2, 3, 4, 5], 
@@ -70,17 +73,6 @@ X = np.empty([data_size * 2, shape], dtype = np.int8)
 Y = np.empty([data_size * 2], dtype = np.float16)
 
 Import()
-what = [state, state, state]
-print(json.dumps(object, default = lambda o: Tumbler.json_dumps(o), 
-            sort_keys = True, indent = 4))
-
-json = Tumbler.json_dumps(state)
-print(json)
-val = Tumbler.json_loads(json)
-print(val)
-val.evaluate()
-
-print("prefabricating data")
 Export()
 state.move(table[4])
 value = [0, 0, 0, 0, 1]
