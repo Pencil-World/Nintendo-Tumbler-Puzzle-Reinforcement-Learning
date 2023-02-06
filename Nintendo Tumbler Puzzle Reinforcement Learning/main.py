@@ -32,29 +32,39 @@ def Export():
         temp.move(table[0])
         temp.move(table[2])
         history[i] = temp
-    i = 0
 
-    for elem in history:
-        for action in range(5):
-            temp = copy.deepcopy(elem)
-            temp.move(counter[action])
-            if not temp in history:
-                temp.reward += discount * elem.reward
-                X[i] = temp.scrub(table[action])
-                Y[i] = temp.reward
-                history[i + 5] = temp
-                JSON[np.array2string(X[i], separator = ", ", max_line_width = 1_000)] = float(Y[i])
+    for junk in range(10):
+        lim = index = 0
+        for elem in history:
+            for action in range(5):
+                temp = copy.deepcopy(elem)
+                temp.move(counter[action])
 
-                if temp.reward >= 1000:
-                    print(temp)
-                    print()
+                if temp.reward != 1_000:
+                    temp.reward += discount * elem.reward
 
-                i += 1
-                if not i % 100:
-                    print(Y[i - 100:i])
-                    if i == data_size:
-                        json.dump(JSON, open('data.json', 'w'), indent = 4)
-                        return
+                    if temp in history:
+                        i = history.index(temp) - 5
+                    else:
+                        i = index
+                        history[i + 5] = temp
+                
+                    if Y[i] < temp.reward:
+                        X[i] = temp.scrub(table[action])
+                        Y[i] = temp.reward
+                        index += 1
+
+                    if not index % 100:
+                        print(Y[index - 100:index])
+                        if index == data_size:
+                            break
+            else:
+                continue
+            break
+
+    for i in range(data_size):
+        JSON[np.array2string(X[i], separator = ", ", max_line_width = 1_000)] = float(Y[i])
+    json.dump(JSON, open('data.json', 'w'), indent = 4)
 
 table = [[1, 0, 0, 0, 0], [0, 1, 0, 0, 0], [0, 0, 1, 0, 0], [0, 0, 0, 1, 0], [0, 0, 0, 0, 1]]
 state = Tumbler([[1, 2, 3, 4, 5], 
@@ -64,16 +74,14 @@ state = Tumbler([[1, 2, 3, 4, 5],
                 [[0,    0,    0]])
 
 discount = 0.99
-data_size = 1_000
+data_size = 10_0
 shape = np.shape(state.scrub_all())[1]
-X = np.empty([data_size * 2, shape], dtype = np.int8)
-Y = np.empty([data_size * 2], dtype = np.float16)
+X = np.empty([data_size, shape], dtype = np.int8)
+Y = np.empty([data_size], dtype = np.float16)
 
+Export()
 Import()
 np.set_printoptions(threshold=sys.maxsize)
-print(X)
-print(Y)
-Export()
 state.move(table[4])
 value = [0, 0, 0, 0, 1]
 
