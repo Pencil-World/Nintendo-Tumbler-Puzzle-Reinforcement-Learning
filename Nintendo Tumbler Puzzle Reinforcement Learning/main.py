@@ -1,11 +1,11 @@
 import copy
+import json
 from tensorflow import keras
 import numpy as np
 import random
 from Tumbler import Tumbler
-import json
-import sys
 
+import sys
 # https://www.geeksforgeeks.org/implementing-neural-networks-using-tensorflow/
 
 def Import():
@@ -23,18 +23,38 @@ def Import():
 def Export():
     print("Exporting Data")
     
-    JSON = dict()
     counter = [table[1], table[0], table[3], table[2], table[4]]
     history = [Tumbler()] * (data_size + 5)
     temp = state
+
     for i in range(5):
         temp = copy.deepcopy(temp)
         temp.move(table[0])
         temp.move(table[2])
         history[i] = temp
 
+    # i = 0
+    # for elem in history:
+    #     for action in range(5):
+    #         temp = copy.deepcopy(elem)
+    #         temp.move(counter[action])
+
+    #         if temp.reward != 1_000:
+    #             temp.reward += discount * elem.reward
+
+    #             if not temp in history:
+    #                 history[i + 5] = temp
+                    
+    #                 i += 1                
+    #                 if index == data_size:
+    #                     break
+    #     else:
+    #         continue
+    #     break
+
+    i = 0
     for junk in range(10):
-        lim = index = 0
+        print("iteration", junk)
         for elem in history:
             for action in range(5):
                 temp = copy.deepcopy(elem)
@@ -44,27 +64,27 @@ def Export():
                     temp.reward += discount * elem.reward
 
                     if temp in history:
-                        i = history.index(temp) - 5
+                        if junk:
+                            i = history.index(temp) - 5
+                            if Y[i] < temp.reward:
+                                print(f"{Y[i]} to {temp.reward}")
+                                X[i] = temp.scrub(table[action])
+                                Y[i] = temp.reward
                     else:
-                        i = index
-                        history[i + 5] = temp
-                
-                    if Y[i] < temp.reward:
-                        X[i] = temp.scrub(table[action])
-                        Y[i] = temp.reward
-                        index += 1
-
-                    if not index % 100:
-                        print(Y[index - 100:index])
-                        if index == data_size:
+                        if junk or i == data_size:
                             break
+                        history[i + 5] = temp
+                        i += 1
+                        if not i % 100:
+                            print(Y[i - 100:i])
             else:
                 continue
             break
 
-    for i in range(data_size):
-        JSON[np.array2string(X[i], separator = ", ", max_line_width = 1_000)] = float(Y[i])
-    json.dump(JSON, open('data.json', 'w'), indent = 4)
+    # JSON = dict()
+    # for i in range(data_size):
+    #     JSON[np.array2string(X[i], separator = ", ", max_line_width = 1_000)] = float(Y[i])
+    # json.dump(JSON, open('data.json', 'w'), indent = 4)
 
 table = [[1, 0, 0, 0, 0], [0, 1, 0, 0, 0], [0, 0, 1, 0, 0], [0, 0, 0, 1, 0], [0, 0, 0, 0, 1]]
 state = Tumbler([[1, 2, 3, 4, 5], 
@@ -74,18 +94,16 @@ state = Tumbler([[1, 2, 3, 4, 5],
                 [[0,    0,    0]])
 
 discount = 0.99
-data_size = 10_0
+data_size = 10_000
 shape = np.shape(state.scrub_all())[1]
 X = np.empty([data_size, shape], dtype = np.int8)
 Y = np.empty([data_size], dtype = np.float16)
 
 Export()
-Import()
-np.set_printoptions(threshold=sys.maxsize)
+sys.exit()
+# np.set_printoptions(threshold=sys.maxsize)
 state.move(table[4])
 value = [0, 0, 0, 0, 1]
-
-sys.exit()
 
 # model = keras.Sequential([
 #         keras.layers.Dense(81, activation = 'relu',
@@ -104,13 +122,12 @@ model = keras.Sequential([
         keras.layers.Dense(1)])
 model.compile(optimizer = keras.optimizers.Adam(learning_rate=1e-3), loss = 'mse')
 model.summary()
-print(model.predict(np.zeros([1, 144])))
 print(model.predict(np.array([state.scrub(table[4])])))
 print(model.predict(state.scrub_all()))
-print(model.predict(np.array([X[0]])))
+print(model.predict(X[0:1]))
 
 sys.exit()
-model.fit(X, Y, batch_size = 64, epochs = 10)
+model.fit(X, Y, batch_size = 64, epochs = 100)
 i = 0
 print("start program")
 while(True):
