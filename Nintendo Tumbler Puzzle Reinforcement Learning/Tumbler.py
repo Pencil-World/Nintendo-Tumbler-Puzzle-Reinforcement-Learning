@@ -23,7 +23,8 @@ class Tumbler():
                 for col, elem in enumerate(arr):
                     elem[index[row][col]] = 1
 
-        self.isUp = isUp # state of hidden. can be above or below the main 2 barrels. 
+        # state of hidden. either above or below the main 2 barrels. 
+        self.isUp = isUp
         self.evaluate()
     
     def __str__(self):
@@ -55,27 +56,26 @@ class Tumbler():
             self.lower = np.roll(self.lower, 1, 1)
         elif action[4]: # switch the position of the towers
             self.isUp = not self.isUp
-            for i in range(3):
-                temp = copy.deepcopy(self.hidden[0][i])
-                iter = 2 * i
+            for i in range(0, 6, 2):
+                temp = copy.deepcopy(self.hidden[0][i // 2])
                 if self.isUp:
-                    self.hidden[0][i] = self.upper[0][iter]
-                    self.upper[0][iter] = self.upper[1][iter]
-                    self.upper[1][iter] = self.lower[0][iter]
-                    self.lower[0][iter] = self.lower[1][iter]
-                    self.lower[1][iter] = temp
+                    self.hidden[0][i // 2] = self.upper[0][i]
+                    self.upper[0][i] = self.upper[1][i]
+                    self.upper[1][i] = self.lower[0][i]
+                    self.lower[0][i] = self.lower[1][i]
+                    self.lower[1][i] = temp
                 else:
-                    self.hidden[0][i] = self.lower[1][iter]
-                    self.lower[1][iter] = self.lower[0][iter]
-                    self.lower[0][iter] = self.upper[1][iter]
-                    self.upper[1][iter] = self.upper[0][iter]
-                    self.upper[0][iter] = temp
+                    self.hidden[0][i // 2] = self.lower[1][i]
+                    self.lower[1][i] = self.lower[0][i]
+                    self.lower[0][i] = self.upper[1][i]
+                    self.upper[1][i] = self.upper[0][i]
+                    self.upper[0][i] = temp
         else:
             print("Incorrect Move")
         
         self.evaluate()
 
-    def evaluate(self):#switch reward and value
+    def evaluate(self):
         comboUpper = comboLower = 0
         value = -20
         for i in range(5):
