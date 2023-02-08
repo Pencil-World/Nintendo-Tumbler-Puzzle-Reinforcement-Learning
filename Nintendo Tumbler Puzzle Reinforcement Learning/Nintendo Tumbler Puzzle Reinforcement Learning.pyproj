@@ -22,12 +22,13 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="model.h5" />
-    <Compile Include="text.txt" />
+    <Compile Include="progress.txt" />
     <Compile Include="Tumbler.py" />
     <Compile Include="main.py" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="data.json" />
+    <Content Include="buffer.json" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in
