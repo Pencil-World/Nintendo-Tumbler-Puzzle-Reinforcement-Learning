@@ -91,7 +91,7 @@ state = Tumbler([[1, 2, 3, 4, 5],
 
 discount = 0.99
 data_size = 10_000
-shape = np.shape(state.scrub_all())[1]
+shape = state.scrub_all().shape[1]
 X = np.zeros([data_size, shape], dtype = np.int8)
 Y = np.zeros([data_size], dtype = np.float32)
 
@@ -126,10 +126,10 @@ for epoch in range(epoch, 1_000):
     Export('buffer.json')
 
     accuracy = 0
-    for i in range(data_size):
+    for i in range(100, data_size):
         # simulate environment
         reward = state.reward
-        action = table[value.argmax() if random.randrange(0, 100) < 95 else random.randrange(0, 5)]
+        action = table[value.argmax() if random.randrange(0, 100) < min(99, epoch * 10) else random.randrange(0, 5)]
         X[i] = state.scrub(action)
         state.move(action)
 
@@ -149,6 +149,7 @@ for epoch in range(epoch, 1_000):
         if not (i + 1) % 100:
             Qnew = keras.models.clone_model(model)
             Qnew.compile(optimizer = 'adam', loss = 'mse')
-            print("loss:", "x" * min(100, int(Qnew.fit(X, Y, batch_size = 64, epochs = 100, verbose = 0).history['loss'][-1] // 4)))
+            print("loss:", "x" * min(150, int(Qnew.fit(X, Y, batch_size = 64, epochs = 100, verbose = 0).history['loss'][-1] // 4)))
+            # append reward and loss to file
             model.set_weights(0.9 * np.array(model.get_weights(), dtype = object) + 0.1 * np.array(Qnew.get_weights(), dtype = object))
     print("accuracy: ", accuracy * 5)

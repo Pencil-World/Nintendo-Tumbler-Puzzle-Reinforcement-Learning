@@ -18,10 +18,10 @@ class Tumbler():
         self.upper = np.zeros([2, 5, 6])
         self.lower = np.zeros([2, 5, 6])
         self.hidden = np.zeros([1, 3, 6])
-        for temp, (mat, index) in enumerate(zip([self.upper, self.lower, self.hidden], [upper, lower, hidden])):
-            for row, arr in enumerate(mat):
+        for (mat, index) in zip([self.upper, self.lower, self.hidden], [upper, lower, hidden]):
+            for row, arr in enumerate(index):
                 for col, elem in enumerate(arr):
-                    elem[index[row][col]] = 1
+                    mat[row][col][elem] = 1
 
         # state of hidden. either above or below the main 2 barrels. 
         self.isUp = isUp
@@ -34,7 +34,7 @@ class Tumbler():
         return f"[[{hidden}]]\n{upper}\n{lower}" if self.isUp else f"{upper}\n{lower}\n[[{hidden}]]"
 
     def __eq__(self, other):
-        return self.reward and other.reward and self.isUp == self.isUp and np.all(self.upper == other.upper) and np.all(self.lower == other.lower) and np.all(self.hidden == other.hidden)
+        return self.reward and other.reward and self.isUp == self.isUp and all(self.upper == other.upper) and all(self.lower == other.lower) and all(self.hidden == other.hidden)
 
     #@staticmethod
     #def json_dumps(object):
