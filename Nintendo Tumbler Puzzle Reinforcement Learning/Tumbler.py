@@ -34,7 +34,7 @@ class Tumbler():
         return f"[[{hidden}]]\n{upper}\n{lower}" if self.isUp else f"{upper}\n{lower}\n[[{hidden}]]"
 
     def __eq__(self, other):
-        return self.reward and other.reward and self.isUp == self.isUp and all(self.upper == other.upper) and all(self.lower == other.lower) and all(self.hidden == other.hidden)
+        return self.reward and other.reward and self.isUp == self.isUp and (self.upper == other.upper).all() and (self.lower == other.lower).all() and (self.hidden == other.hidden).all()
 
     #@staticmethod
     #def json_dumps(object):
@@ -76,13 +76,10 @@ class Tumbler():
         self.evaluate()
 
     def evaluate(self):
-        comboUpper = comboLower = 0
-        value = -20
+        terminal = 0
         for i in range(5):
-            comboUpper += self.upper[0][i].argmax() == self.upper[1][i].argmax()
-            comboLower += self.lower[0][i].argmax() == self.lower[1][i].argmax()
-            value += self.upper[0][i].argmax() == self.upper[1][i].argmax() == self.lower[0][i].argmax() == self.lower[1][i].argmax()
-        self.reward = 1_000 if value == -15 else value + 1.5 * comboUpper + 1.5 * comboLower
+            terminal += 1 == self.upper[0][i][i + 1] == self.upper[1][i][i + 1] == self.lower[0][i][i + 1] == self.lower[1][i][i + 1]
+        self.reward = 100 if terminal == 5 else 0
 
     def scrub(self, action):
         return np.concatenate([self.upper.flatten(), self.lower.flatten(), self.hidden.flatten(), [self.isUp], action])

@@ -22,7 +22,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="model.h5" />
-    <Compile Include="progress.txt" />
+    <Compile Include="log.txt" />
     <Compile Include="Tumbler.py" />
     <Compile Include="main.py" />
   </ItemGroup>

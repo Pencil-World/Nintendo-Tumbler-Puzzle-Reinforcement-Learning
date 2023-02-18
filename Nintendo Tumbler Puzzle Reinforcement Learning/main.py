@@ -3,10 +3,11 @@ import json
 from tensorflow import keras
 import numpy as np
 import random
+import time
 from Tumbler import Tumbler
 
 # https://www.geeksforgeeks.org/implementing-neural-networks-using-tensorflow/
-# lists are not type sensitive. numpy arrays are type sensitive
+# lists are not type sensitive. numpy arrays are type sensitive. 
 # print(model.predict(np.array([state.scrub(table[4])])))
 # print(model.predict(state.scrub_all()))
 # print(model.predict(X[0:1]))
@@ -15,43 +16,28 @@ def Synthesize():
     print("Data Synthesis")
 
     counter = [table[1], table[0], table[3], table[2], table[4]]
-    history = [Tumbler()] * (data_size + 5)
-    temp = state
-
-    for i in range(5):
-        temp = copy.deepcopy(temp)
-        temp.move(table[0])
-        temp.move(table[2])
-        history[i] = temp
+    history = [Tumbler()] * (data_size + 1)
+    history[0] = state
 
     i = 0
-    for junk in range(10):
-        print("iteration", junk)
-        for elem in history:
-            for action in range(5):
-                temp = copy.deepcopy(elem)
-                temp.move(counter[action])
+    for elem in history:
+        for action in range(5):
+            temp = copy.deepcopy(elem)
+            temp.move(counter[action])
 
-                if temp.reward != 1_000:
-                    temp.reward += discount * elem.reward
+            if temp.reward != 100:
+                temp.reward += discount * elem.reward
 
-                    if temp in history:
-                        if junk:
-                            i = history.index(temp) - 5
-                            if Y[i] < temp.reward:
-                                print(f"{Y[i]} to {temp.reward}")
-                                X[i] = temp.scrub(table[action])
-                                Y[i] = temp.reward
-                    else:
-                        if junk or i == data_size:
+                if not temp in history:
+                    X[i] = temp.scrub(table[action])
+                    Y[i] = temp.reward
+                    i += 1
+                    history[i] = temp
+
+                    if not i % 100:
+                        print(Y[i - 100:i])
+                        if i == data_size:
                             break
-                        history[i + 5] = temp
-                        i += 1
-                        if not i % 100:
-                            print(Y[i - 100:i])
-            else:
-                continue
-            break
 
 def Import(fstream):
     print("Importing Data")
@@ -59,7 +45,8 @@ def Import(fstream):
     global epoch, model
     epoch = 0
     if fstream == 'buffer.json':
-        epoch = int(open('progress.txt', 'r').read())
+        log = open('log.txt', 'r').read().split()
+        epoch = int(log[-log[::-1].index("epoch:")])
         # loads the weights. automatically compiles the model. 
         model = keras.models.load_model('model.h5')
     
@@ -72,7 +59,9 @@ def Export(fstream):
     print("Exporting Data")
     
     if fstream == 'buffer.json':
-        open('progress.txt', 'w').write(str(epoch))
+        text = f"epoch: {epoch}\n"
+        print(text)
+        open('log.txt', 'a').write(text)
         # save() saves the weights, model architecture, training configuration, and optimizer to a HDF5. 
         # save_weights() only saves the weights to a HDF5. weights can be applied to another model architecture. 
         model.save('model.h5')
@@ -82,6 +71,7 @@ def Export(fstream):
         JSON[np.array2string(X[i], separator = ", ", max_line_width = 1_000)] = float(Y[i])
     json.dump(JSON, open(fstream, 'w'), indent = 4)
 
+Time = time.time()
 table = [[1, 0, 0, 0, 0], [0, 1, 0, 0, 0], [0, 0, 1, 0, 0], [0, 0, 0, 1, 0], [0, 0, 0, 0, 1]]
 state = Tumbler([[1, 2, 3, 4, 5], 
                  [1, 2, 3, 4, 5]], 
@@ -94,9 +84,6 @@ data_size = 10_000
 shape = state.scrub_all().shape[1]
 X = np.zeros([data_size, shape], dtype = np.int8)
 Y = np.zeros([data_size], dtype = np.float32)
-
-state.move(table[4])
-value = np.array([0, 0, 0, 0, 1])
 
 #Import('buffer.json')
 #Synthesize()
@@ -118,11 +105,10 @@ model.compile(optimizer = 'adam', loss = 'mse')
 model.summary()
 model.fit(X, Y, batch_size = 64, epochs = 100, verbose = 0)
 
+state.move(table[4])
+value = np.array([0, 0, 0, 0, 1])
 print("start program")
 for epoch in range(epoch, 1_000):
-    print("epoch: ", epoch)
-    open('progress.txt', 'w').write(str(epoch))
-    model.save('model.h5')
     Export('buffer.json')
 
     accuracy = 0
@@ -149,7 +135,8 @@ for epoch in range(epoch, 1_000):
         if not (i + 1) % 100:
             Qnew = keras.models.clone_model(model)
             Qnew.compile(optimizer = 'adam', loss = 'mse')
-            print("loss:", "x" * min(150, int(Qnew.fit(X, Y, batch_size = 64, epochs = 100, verbose = 0).history['loss'][-1] // 4)))
-            # append reward and loss to file
+            loss = Qnew.fit(X, Y, batch_size = 64, epochs = 100, verbose = 0).history['loss'][-1]
+            open('log.txt', 'a').write(f"reward: {reward} value {Y[i]} loss: {loss}\n")
+            print(f"loss: {'x' * min(100, int(loss // 4))}")
             model.set_weights(0.9 * np.array(model.get_weights(), dtype = object) + 0.1 * np.array(Qnew.get_weights(), dtype = object))
     print("accuracy: ", accuracy * 5)
