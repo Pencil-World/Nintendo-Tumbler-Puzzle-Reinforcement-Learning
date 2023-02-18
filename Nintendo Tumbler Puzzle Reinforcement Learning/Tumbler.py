@@ -11,10 +11,6 @@ class Tumbler():
                 setattr(self, key, val)
             return
 
-        if not hidden:
-            self.reward = 0
-            return
-
         self.upper = np.zeros([2, 5, 6])
         self.lower = np.zeros([2, 5, 6])
         self.hidden = np.zeros([1, 3, 6])
@@ -34,7 +30,7 @@ class Tumbler():
         return f"[[{hidden}]]\n{upper}\n{lower}" if self.isUp else f"{upper}\n{lower}\n[[{hidden}]]"
 
     def __eq__(self, other):
-        return self.reward and other.reward and self.isUp == self.isUp and (self.upper == other.upper).all() and (self.lower == other.lower).all() and (self.hidden == other.hidden).all()
+        return self.isUp == self.isUp and (self.upper == other.upper).all() and (self.lower == other.lower).all() and (self.hidden == other.hidden).all()
 
     #@staticmethod
     #def json_dumps(object):

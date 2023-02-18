@@ -13,13 +13,13 @@ from Tumbler import Tumbler
 # print(model.predict(X[0:1]))
 
 def Synthesize():
-    print("Data Synthesis")
+    print("\nSynthesizing Data")
 
     counter = [table[1], table[0], table[3], table[2], table[4]]
     history = [Tumbler()] * (data_size + 1)
     history[0] = state
-
     i = 0
+
     for elem in history:
         for action in range(5):
             temp = copy.deepcopy(elem)
@@ -37,58 +37,69 @@ def Synthesize():
                     if not i % 100:
                         print(Y[i - 100:i])
                         if i == data_size:
-                            break
+                            Save('data.json')
+                            return
 
-def Import(fstream):
-    print("Importing Data")
+def Load(fstream):
+    print("\nLoading Data")
 
-    global epoch, model
-    epoch = 0
-    if fstream == 'buffer.json':
-        log = open('log.txt', 'r').read().split()
-        epoch = int(log[-log[::-1].index("epoch:")])
-        # loads the weights. automatically compiles the model. 
-        model = keras.models.load_model('model.h5')
-    
     data = json.load(open(fstream, 'r'))
     for i, (key, val) in enumerate(data.items()):
         X[i] = np.array(json.loads(key))
         Y[i] = val
 
-def Export(fstream):
-    print("Exporting Data")
-    
-    if fstream == 'buffer.json':
-        text = f"epoch: {epoch}\n"
-        print(text)
-        open('log.txt', 'a').write(text)
-        # save() saves the weights, model architecture, training configuration, and optimizer to a HDF5. 
-        # save_weights() only saves the weights to a HDF5. weights can be applied to another model architecture. 
-        model.save('model.h5')
+    if fstream == 'data.json':
+        return
 
+    global epoch, model
+    # loads the weights. automatically compiles the model. 
+    model = keras.models.load_model('model.h5')
+    log = open('log.txt', 'r').read().split()
+    epoch = int(log[-log[::-1].index("epoch:")])
+
+def Save(fstream):
+    print("\nSaving Data")
+    
     JSON = dict()
     for i in range(data_size):
         JSON[np.array2string(X[i], separator = ", ", max_line_width = 1_000)] = float(Y[i])
     json.dump(JSON, open(fstream, 'w'), indent = 4)
 
+    if fstream == 'data.json':
+        return
+
+    # save() saves the weights, model architecture, training configuration, and optimizer to a HDF5. 
+    # save_weights() only saves the weights to a HDF5. weights can be applied to another model architecture. 
+    model.save('model.h5')
+    text = f"epoch: {epoch}\n"
+    open('log.txt', 'a').write(text)
+    print(text)
+
+def Clear():
+    open('log.txt', 'w').close()
+    open('buffer.json', 'w').close()
+
 Time = time.time()
+epoch = 1
 table = [[1, 0, 0, 0, 0], [0, 1, 0, 0, 0], [0, 0, 1, 0, 0], [0, 0, 0, 1, 0], [0, 0, 0, 0, 1]]
 state = Tumbler([[1, 2, 3, 4, 5], 
                  [1, 2, 3, 4, 5]], 
                 [[1, 2, 3, 4, 5], 
                  [1, 2, 3, 4, 5]], 
                 [[0,    0,    0]])
-
-discount = 0.99
+print(state)
+discount = 0.9
 data_size = 10_000
 shape = state.scrub_all().shape[1]
 X = np.zeros([data_size, shape], dtype = np.int8)
 Y = np.zeros([data_size], dtype = np.float32)
 
-#Import('buffer.json')
-#Synthesize()
-#Export('data.json')
-Import('data.json')
+#Load('buffer.json')
+Synthesize()
+print(state)
+#Save('data.json')
+Load('data.json')
+Clear()
 
 model = keras.Sequential([
         keras.layers.Dense(81, activation = 'relu',
@@ -104,39 +115,54 @@ model = keras.Sequential([
 model.compile(optimizer = 'adam', loss = 'mse')
 model.summary()
 model.fit(X, Y, batch_size = 64, epochs = 100, verbose = 0)
+value = model.predict(state.scrub_all(), verbose = 0)
+print(value)
+print(value.max())
 
-state.move(table[4])
-value = np.array([0, 0, 0, 0, 1])
-print("start program")
+i = accuracy = 0
 for epoch in range(epoch, 1_000):
-    Export('buffer.json')
+    Save('buffer.json')
 
-    accuracy = 0
-    for i in range(100, data_size):
+    for i in range(i, data_size):
         # simulate environment
-        reward = state.reward
-        action = table[value.argmax() if random.randrange(0, 100) < min(99, epoch * 10) else random.randrange(0, 5)]
-        X[i] = state.scrub(action)
-        state.move(action)
+        state = Tumbler([[1, 2, 3, 4, 5], 
+                         [1, 2, 3, 4, 5]], 
+                        [[1, 2, 3, 4, 5], 
+                         [1, 2, 3, 4, 5]], 
+                        [[0,    0,    0]])
+        for temp in range(min(epoch, 50)):
+            state.move(table[random.randrange(0, 5)])
 
         # replay buffer
-        if state.reward == 1_000:
-            Y[i] = reward + discount * 1_000
-            for temp in range(50):
-                state.move(table[random.randrange(0, 5)])
+        value = model.predict(state.scrub_all(), verbose = 0)
+        for temp in range(min(epoch, 50, data_size - i)):
+            reward = state.reward
+            action = table[value.argmax() if random.randrange(0, 100) < 95 else random.randrange(0, 5)]
+            X[i] = state.scrub(action)
+            state.move(action)
 
-            value = model.predict(state.scrub_all(), verbose = 0)
-            accuracy += 1
-        else:
-            value = model.predict(state.scrub_all(), verbose = 0)
-            Y[i] = reward + discount * np.amax(value)
+            if state.reward == 100:
+                Y[i] = reward + discount * state.reward
+                break
+            else:
+                value = model.predict(state.scrub_all(), verbose = 0)
+                Y[i] = reward + discount * value.max()
 
         # train model
-        if not (i + 1) % 100:
+        i += 1
+        if not i % 100:
+            if i % 1_000:
+                print("accuracy: ", accuracy * 5)
+                accuracy = 0
+                if i == data_size:
+                    i = 0
+                break
+
             Qnew = keras.models.clone_model(model)
             Qnew.compile(optimizer = 'adam', loss = 'mse')
             loss = Qnew.fit(X, Y, batch_size = 64, epochs = 100, verbose = 0).history['loss'][-1]
-            open('log.txt', 'a').write(f"reward: {reward} value {Y[i]} loss: {loss}\n")
-            print(f"loss: {'x' * min(100, int(loss // 4))}")
             model.set_weights(0.9 * np.array(model.get_weights(), dtype = object) + 0.1 * np.array(Qnew.get_weights(), dtype = object))
-    print("accuracy: ", accuracy * 5)
+                
+            text = f"loss: {loss}"
+            open('log.txt', 'a').write(text + '\n')
+            print(f"reward: {reward} {text}")
