@@ -18,6 +18,7 @@ def Synthesize():
     counter = [table[1], table[0], table[3], table[2], table[4]]
     history = [Tumbler()] * (data_size + 1)
     history[0] = state
+    it = 1
     i = 0
 
     for elem in history:
@@ -29,16 +30,17 @@ def Synthesize():
                 temp.reward += discount * elem.reward
 
                 if not temp in history:
-                    X[i] = temp.scrub(table[action])
-                    Y[i] = temp.reward
-                    i += 1
-                    history[i] = temp
+                    history[it] = temp
+                    it += 1
+                X[i] = temp.scrub(table[action])
+                Y[i] = temp.reward
+                i += 1
 
-                    if not i % 100:
-                        print(Y[i - 100:i])
-                        if i == data_size:
-                            Save('data.json')
-                            return
+                if not i % 100:
+                    print(Y[i - 100:i])
+                    if i == data_size:
+                        Save('data.json')
+                        return
 
 def Load(fstream):
     print("\nLoading Data")
@@ -48,14 +50,22 @@ def Load(fstream):
         X[i] = np.array(json.loads(key))
         Y[i] = val
 
+    for it, i in enumerate(range(i + 1, data_size)):
+        X[i] = X[it]
+        Y[i] = Y[it]
+
     if fstream == 'data.json':
         return
 
-    global epoch, model
+    global epoch, i, model
     # loads the weights. automatically compiles the model. 
     model = keras.models.load_model('model.h5')
     log = open('log.txt', 'r').read().split()
-    epoch = int(log[-log[::-1].index("epoch:")])
+    index = -log[::-1].index("epoch:")
+    epoch = int(log[index])
+    i = (epoch - 1) * cluster_size % data_size
+    del log[:index]
+    open('log.txt', 'r').write(''.join([elem + ('\n' if elem.find(':') == -1 else ' ') for elem in log]))
 
 def Save(fstream):
     print("\nSaving Data")
@@ -71,8 +81,8 @@ def Save(fstream):
     # save() saves the weights, model architecture, training configuration, and optimizer to a HDF5. 
     # save_weights() only saves the weights to a HDF5. weights can be applied to another model architecture. 
     model.save('model.h5')
-    text = f"epoch: {epoch}\n"
-    open('log.txt', 'a').write(text)
+    text = f"epoch: {epoch}\ntime: {time.time() - Time}"
+    open('log.txt', 'a').write(text + '\n')
     print(text)
 
 def Clear():
@@ -81,45 +91,43 @@ def Clear():
 
 Time = time.time()
 epoch = 1
+i = 0
 table = [[1, 0, 0, 0, 0], [0, 1, 0, 0, 0], [0, 0, 1, 0, 0], [0, 0, 0, 1, 0], [0, 0, 0, 0, 1]]
 state = Tumbler([[1, 2, 3, 4, 5], 
                  [1, 2, 3, 4, 5]], 
                 [[1, 2, 3, 4, 5], 
                  [1, 2, 3, 4, 5]], 
                 [[0,    0,    0]])
-print(state)
+
 discount = 0.9
 data_size = 10_000
+cluster_size = 1_000
 shape = state.scrub_all().shape[1]
 X = np.zeros([data_size, shape], dtype = np.int8)
 Y = np.zeros([data_size], dtype = np.float32)
 
-#Load('buffer.json')
-Synthesize()
-print(state)
-#Save('data.json')
-Load('data.json')
-Clear()
+#Synthesize()
+#Load('data.json')
+#Clear()
 
 model = keras.Sequential([
-        keras.layers.Dense(81, activation = 'relu',
+        keras.layers.Dense(125, activation = 'relu',
                             input_shape = [shape]),
-        keras.layers.Dense(64, activation = 'relu'),
-        keras.layers.Dense(49, activation = 'relu'),
-        keras.layers.Dense(36, activation = 'relu'),
+        keras.layers.Dense(125, activation = 'relu'),
+        keras.layers.Dense(125, activation = 'relu'),
+        keras.layers.Dense(125, activation = 'relu'),
+        keras.layers.Dense(125, activation = 'relu'),
+        keras.layers.Dense(125, activation = 'relu'),
+        keras.layers.Dense(125, activation = 'relu'),
         keras.layers.Dense(25, activation = 'relu'),
-        keras.layers.Dense(16, activation = 'relu'),
-        keras.layers.Dense(9, activation = 'relu'),
-        keras.layers.Dense(4, activation = 'relu'),
+        keras.layers.Dense(5, activation = 'relu'),
         keras.layers.Dense(1)])
 model.compile(optimizer = 'adam', loss = 'mse')
 model.summary()
-model.fit(X, Y, batch_size = 64, epochs = 100, verbose = 0)
-value = model.predict(state.scrub_all(), verbose = 0)
-print(value)
-print(value.max())
+model.fit(X, Y, batch_size = 64, epochs = 300, verbose = 0)
 
-i = accuracy = 0
+Load('buffer.json')
+accuracy = 0
 for epoch in range(epoch, 1_000):
     Save('buffer.json')
 
@@ -130,8 +138,9 @@ for epoch in range(epoch, 1_000):
                         [[1, 2, 3, 4, 5], 
                          [1, 2, 3, 4, 5]], 
                         [[0,    0,    0]])
-        for temp in range(min(epoch, 50)):
-            state.move(table[random.randrange(0, 5)])
+        while state.reward == 100:
+            for temp in range(min(epoch, 50)):
+                state.move(table[random.randrange(0, 5)])
 
         # replay buffer
         value = model.predict(state.scrub_all(), verbose = 0)
@@ -143,6 +152,7 @@ for epoch in range(epoch, 1_000):
 
             if state.reward == 100:
                 Y[i] = reward + discount * state.reward
+                accuracy += 1
                 break
             else:
                 value = model.predict(state.scrub_all(), verbose = 0)
@@ -151,18 +161,18 @@ for epoch in range(epoch, 1_000):
         # train model
         i += 1
         if not i % 100:
-            if i % 1_000:
-                print("accuracy: ", accuracy * 5)
-                accuracy = 0
-                if i == data_size:
-                    i = 0
-                break
-
             Qnew = keras.models.clone_model(model)
             Qnew.compile(optimizer = 'adam', loss = 'mse')
-            loss = Qnew.fit(X, Y, batch_size = 64, epochs = 100, verbose = 0).history['loss'][-1]
+            loss = Qnew.fit(X, Y, batch_size = 64, epochs = 300, verbose = 0).history['loss'][-1]
             model.set_weights(0.9 * np.array(model.get_weights(), dtype = object) + 0.1 * np.array(Qnew.get_weights(), dtype = object))
                 
             text = f"loss: {loss}"
             open('log.txt', 'a').write(text + '\n')
-            print(f"reward: {reward} {text}")
+            print(text)
+
+            if not i % cluster_size
+                print("accuracy:", accuracy / 10)
+                accuracy = 0
+                if i == data_size:
+                    i = 0
+                break
