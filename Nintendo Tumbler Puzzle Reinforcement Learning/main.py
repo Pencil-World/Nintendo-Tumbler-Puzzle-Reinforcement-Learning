@@ -44,6 +44,7 @@ def Synthesize():
 
 def Load(fstream):
     print("\nLoading Data")
+    global epoch, i, model
 
     data = json.load(open(fstream, 'r'))
     for i, (key, val) in enumerate(data.items()):
@@ -57,15 +58,19 @@ def Load(fstream):
     if fstream == 'data.json':
         return
 
-    global epoch, i, model
+    f = open('log.txt', 'r')
+    log = f.read().split()
+    f.close()
+
     # loads the weights. automatically compiles the model. 
-    model = keras.models.load_model('model.h5')
-    log = open('log.txt', 'r').read().split()
+    model = keras.models.load_model('model.h5')    
     index = -log[::-1].index("epoch:")
     epoch = int(log[index])
     i = (epoch - 1) * cluster_size % data_size
-    del log[:index]
-    open('log.txt', 'r').write(''.join([elem + ('\n' if elem.find(':') == -1 else ' ') for elem in log]))
+    
+    f = open('log.txt', 'w')
+    f.write(''.join([elem + ('\n' if elem.find(':') == -1 else ' ') for elem in log[:index - 1]]))
+    f.close()
 
 def Save(fstream):
     print("\nSaving Data")
@@ -127,11 +132,13 @@ model.summary()
 model.fit(X, Y, batch_size = 64, epochs = 300, verbose = 0)
 
 Load('buffer.json')
-accuracy = 0
 for epoch in range(epoch, 1_000):
     Save('buffer.json')
 
-    for i in range(i, data_size):
+    accuracy = 0
+    i = 0 if i == data_size else i
+    lim = i + cluster_size
+    while i < lim:
         # simulate environment
         state = Tumbler([[1, 2, 3, 4, 5], 
                          [1, 2, 3, 4, 5]], 
@@ -151,28 +158,25 @@ for epoch in range(epoch, 1_000):
             state.move(action)
 
             if state.reward == 100:
-                Y[i] = reward + discount * state.reward
                 accuracy += 1
-                break
+                Y[i] = reward + discount * state.reward
             else:
                 value = model.predict(state.scrub_all(), verbose = 0)
                 Y[i] = reward + discount * value.max()
 
-        # train model
-        i += 1
-        if not i % 100:
-            Qnew = keras.models.clone_model(model)
-            Qnew.compile(optimizer = 'adam', loss = 'mse')
-            loss = Qnew.fit(X, Y, batch_size = 64, epochs = 300, verbose = 0).history['loss'][-1]
-            model.set_weights(0.9 * np.array(model.get_weights(), dtype = object) + 0.1 * np.array(Qnew.get_weights(), dtype = object))
+            # train model
+            i += 1
+            if not i % 100:
+                Qnew = keras.models.clone_model(model)
+                Qnew.compile(optimizer = 'adam', loss = 'mse')
+                loss = Qnew.fit(X, Y, batch_size = 64, epochs = 300, verbose = 0).history['loss'][-1]
+                model.set_weights(0.9 * np.array(model.get_weights(), dtype = object) + 0.1 * np.array(Qnew.get_weights(), dtype = object))
                 
-            text = f"loss: {loss}"
-            open('log.txt', 'a').write(text + '\n')
-            print(text)
+                text = f"loss: {loss}"
+                open('log.txt', 'a').write(text + '\n')
+                print(text)
 
-            if not i % cluster_size
-                print("accuracy:", accuracy / 10)
-                accuracy = 0
-                if i == data_size:
-                    i = 0
+            if state.reward == 100:
                 break
+
+    print("accuracy:", accuracy * 100 / cluster_size)
