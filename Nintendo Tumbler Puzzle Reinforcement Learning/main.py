@@ -18,7 +18,6 @@ def Synthesize():
     counter = [table[1], table[0], table[3], table[2], table[4]]
     history = [Tumbler()] * (data_size + 1)
     history[0] = state
-    it = 1
     i = 0
 
     for elem in history:
@@ -30,30 +29,27 @@ def Synthesize():
                 temp.reward += discount * elem.reward
 
                 if not temp in history:
-                    history[it] = temp
-                    it += 1
-                X[i] = temp.scrub(table[action])
-                Y[i] = temp.reward
-                i += 1
+                    X[i] = temp.scrub(table[action])
+                    Y[i] = temp.reward
+                    i += 1
+                    history[i] = temp
 
-                if not i % 100:
-                    print(Y[i - 100:i])
-                    if i == data_size:
-                        Save('data.json')
-                        return
+                    if not i % 100:
+                        print(Y[i - 100:i])
+                        if i == data_size:
+                            Save('data.json')
+                            return
 
 def Load(fstream):
     print("\nLoading Data")
-    global epoch, i, model
 
     data = json.load(open(fstream, 'r'))
-    for i, (key, val) in enumerate(data.items()):
-        X[i] = np.array(json.loads(key))
-        Y[i] = val
-
-    for it, i in enumerate(range(i + 1, data_size)):
-        X[i] = X[it]
-        Y[i] = Y[it]
+    for _i, (key, val) in enumerate(data.items()):
+        X[_i] = np.array(json.loads(key))
+        Y[_i] = val
+    for it, _i in enumerate(range(_i + 1, data_size)):
+        X[_i] = X[it]
+        Y[_i] = Y[it]
 
     if fstream == 'data.json':
         return
@@ -62,12 +58,13 @@ def Load(fstream):
     log = f.read().split()
     f.close()
 
+    global epoch, i, lim, model
     # loads the weights. automatically compiles the model. 
-    model = keras.models.load_model('model.h5')    
+    model = keras.models.load_model('model.h5')
     index = -log[::-1].index("epoch:")
     epoch = int(log[index])
-    i = (epoch - 1) * cluster_size % data_size
-    
+    i = lim = (epoch - 1) * cluster_size % data_size
+
     f = open('log.txt', 'w')
     f.write(''.join([elem + ('\n' if elem.find(':') == -1 else ' ') for elem in log[:index - 1]]))
     f.close()
@@ -75,9 +72,10 @@ def Load(fstream):
 def Save(fstream):
     print("\nSaving Data")
     
-    JSON = dict()
-    for i in range(data_size):
-        JSON[np.array2string(X[i], separator = ", ", max_line_width = 1_000)] = float(Y[i])
+    JSON = dict(zip([repr(elem.tolist()) for elem in X], Y))
+    bob = dict()
+    for _i in range(data_size):
+        bob[np.array2string(X[_i], separator = ", ", max_line_width = 1_000)] = float(Y[_i])
     json.dump(JSON, open(fstream, 'w'), indent = 4)
 
     if fstream == 'data.json':
@@ -96,7 +94,7 @@ def Clear():
 
 Time = time.time()
 epoch = 1
-i = 0
+i = lim = 0
 table = [[1, 0, 0, 0, 0], [0, 1, 0, 0, 0], [0, 0, 1, 0, 0], [0, 0, 0, 1, 0], [0, 0, 0, 0, 1]]
 state = Tumbler([[1, 2, 3, 4, 5], 
                  [1, 2, 3, 4, 5]], 
@@ -105,7 +103,7 @@ state = Tumbler([[1, 2, 3, 4, 5],
                 [[0,    0,    0]])
 
 discount = 0.9
-data_size = 10_000
+data_size = 50_000
 cluster_size = 1_000
 shape = state.scrub_all().shape[1]
 X = np.zeros([data_size, shape], dtype = np.int8)
@@ -135,9 +133,10 @@ Load('buffer.json')
 for epoch in range(epoch, 1_000):
     Save('buffer.json')
 
+    if i == data_size:
+        i = lim = 0
+    lim += cluster_size
     accuracy = 0
-    i = 0 if i == data_size else i
-    lim = i + cluster_size
     while i < lim:
         # simulate environment
         state = Tumbler([[1, 2, 3, 4, 5], 
