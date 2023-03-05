@@ -45,7 +45,7 @@ def Synthesize():
                             return
 
 def Load(fstream):
-    with open('debugger.txt', 'w') as debugger:
+    with open('debugger.txt', 'a') as debugger:
         debugger.write("Loading Data\n")
     global epoch, i, lim, model
 
@@ -77,7 +77,7 @@ def Load(fstream):
     f.close()
 
 def Save(fstream):
-    with open('debugger.txt', 'w') as debugger:
+    with open('debugger.txt', 'a') as debugger:
         debugger.write("Saving Data\n")
     
         JSON = dict(zip([repr(elem.tolist()) for elem in X], Y))
@@ -97,6 +97,7 @@ def Clear():
     open('log.txt', 'w').close()
     open('buffer.json', 'w').close()
 
+open('debugger.txt', 'w').close()
 Time = time.time()
 epoch = 1
 i = lim = 0
@@ -128,7 +129,7 @@ model.summary()
 #Clear()
 Load('buffer.json')
 
-with open('debugger.txt', 'w') as debugger:
+with open('debugger.txt', 'a') as debugger:
     debugger.write("start program\n")
 for epoch in range(epoch, 1_000):
     Save('buffer.json')
@@ -173,11 +174,11 @@ for epoch in range(epoch, 1_000):
                 
                 text = f"loss: {loss}\n"
                 open('log.txt', 'a').write(text)
-                with open('debugger.txt', 'w') as debugger:
+                with open('debugger.txt', 'a') as debugger:
                     debugger.write(text)
 
             if state.reward == 100:
                 break
 
-    with open('debugger.txt', 'w') as debugger:
+    with open('debugger.txt', 'a') as debugger:
         debugger.write(f"accuracy: {accuracy * 100 / cluster_size}")
