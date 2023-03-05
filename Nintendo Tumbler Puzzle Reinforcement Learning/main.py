@@ -13,7 +13,7 @@ from Tumbler import Tumbler
 # print(model.predict(X[0:1]))
 
 def Synthesize():
-    print("\nSynthesizing Data")
+    print("Synthesizing Data")
 
     counter = [table[1], table[0], table[3], table[2], table[4]]
     history = [Tumbler()] * (data_size + 1)
@@ -45,7 +45,7 @@ def Synthesize():
                             return
 
 def Load(fstream):
-    print("\nLoading Data")
+    debugger.write("Loading Data\n")
 
     data = json.load(open(fstream, 'r'))
     for _i, (key, val) in enumerate(data.items()):
@@ -76,7 +76,7 @@ def Load(fstream):
     f.close()
 
 def Save(fstream):
-    print("\nSaving Data")
+    debugger.write("Saving Data\n")
     
     JSON = dict(zip([repr(elem.tolist()) for elem in X], Y))
     json.dump(JSON, open(fstream, 'w'), indent = 4)
@@ -87,14 +87,15 @@ def Save(fstream):
     # save() saves the weights, model architecture, training configuration, and optimizer to a HDF5. 
     # save_weights() only saves the weights to a HDF5. weights can be applied to another model architecture. 
     model.save('model.h5')
-    text = f"epoch: {epoch}\ntime: {time.time() - Time}"
-    open('log.txt', 'a').write(text + '\n')
-    print(text)
+    text = f"epoch: {epoch} time: {time.time() - Time}\n"
+    open('log.txt', 'a').write(text)
+    debugger.write(text)
 
 def Clear():
     open('log.txt', 'w').close()
     open('buffer.json', 'w').close()
 
+debugger = open('debugger.txt', 'w')
 Time = time.time()
 epoch = 1
 i = lim = 0
@@ -127,7 +128,7 @@ model.summary()
 #Clear()
 Load('buffer.json')
 
-print("start program")
+debugger.write("start program\n")
 for epoch in range(epoch, 1_000):
     Save('buffer.json')
 
@@ -169,11 +170,12 @@ for epoch in range(epoch, 1_000):
                 loss = Qnew.fit(X, Y, batch_size = 64, epochs = 300, verbose = 0).history['loss'][-1]
                 model.set_weights(0.9 * np.array(model.get_weights(), dtype = object) + 0.1 * np.array(Qnew.get_weights(), dtype = object))
                 
-                text = f"loss: {loss}"
-                open('log.txt', 'a').write(text + '\n')
-                print(text)
+                text = f"loss: {loss}\n"
+                open('log.txt', 'a').write(text)
+                debugger.write(text)
+                debugger.flush()
 
             if state.reward == 100:
                 break
 
-    print("accuracy:", accuracy * 100 / cluster_size)
+    debugger.write(f"accuracy: {accuracy * 100 / cluster_size}")
