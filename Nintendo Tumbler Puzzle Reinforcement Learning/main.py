@@ -45,7 +45,9 @@ def Synthesize():
                             return
 
 def Load(fstream):
-    debugger.write("Loading Data\n")
+    with open('debugger.txt', 'w') as debugger:
+        debugger.write("Loading Data\n")
+    global epoch, i, lim, model
 
     data = json.load(open(fstream, 'r'))
     for _i, (key, val) in enumerate(data.items()):
@@ -64,7 +66,6 @@ def Load(fstream):
     log = f.read().split()
     f.close()
 
-    global epoch, i, lim, model
     # loads the weights. automatically compiles the model. 
     model = keras.models.load_model('model.h5')
     index = -log[::-1].index("epoch:")
@@ -76,26 +77,26 @@ def Load(fstream):
     f.close()
 
 def Save(fstream):
-    debugger.write("Saving Data\n")
+    with open('debugger.txt', 'w') as debugger:
+        debugger.write("Saving Data\n")
     
-    JSON = dict(zip([repr(elem.tolist()) for elem in X], Y))
-    json.dump(JSON, open(fstream, 'w'), indent = 4)
+        JSON = dict(zip([repr(elem.tolist()) for elem in X], Y))
+        json.dump(JSON, open(fstream, 'w'), indent = 4)
 
-    if fstream == 'data.json':
-        return
+        if fstream == 'data.json':
+            return
 
-    # save() saves the weights, model architecture, training configuration, and optimizer to a HDF5. 
-    # save_weights() only saves the weights to a HDF5. weights can be applied to another model architecture. 
-    model.save('model.h5')
-    text = f"epoch: {epoch} time: {time.time() - Time}\n"
-    open('log.txt', 'a').write(text)
-    debugger.write(text)
+        # save() saves the weights, model architecture, training configuration, and optimizer to a HDF5. 
+        # save_weights() only saves the weights to a HDF5. weights can be applied to another model architecture. 
+        model.save('model.h5')
+        text = f"epoch: {epoch} time: {time.time() - Time}\n"
+        open('log.txt', 'a').write(text)
+        debugger.write(text)
 
 def Clear():
     open('log.txt', 'w').close()
     open('buffer.json', 'w').close()
 
-debugger = open('debugger.txt', 'w')
 Time = time.time()
 epoch = 1
 i = lim = 0
@@ -107,7 +108,6 @@ cluster_size = 1_000
 shape = Tumbler().scrub_all().shape[1]
 X = np.zeros([data_size, shape], dtype = np.int8)
 Y = np.zeros([data_size], dtype = np.float64)
-
 
 model = keras.Sequential([
         keras.layers.Dense(125, activation = 'relu',
@@ -128,7 +128,8 @@ model.summary()
 #Clear()
 Load('buffer.json')
 
-debugger.write("start program\n")
+with open('debugger.txt', 'w') as debugger:
+    debugger.write("start program\n")
 for epoch in range(epoch, 1_000):
     Save('buffer.json')
 
@@ -172,10 +173,11 @@ for epoch in range(epoch, 1_000):
                 
                 text = f"loss: {loss}\n"
                 open('log.txt', 'a').write(text)
-                debugger.write(text)
-                debugger.flush()
+                with open('debugger.txt', 'w') as debugger:
+                    debugger.write(text)
 
             if state.reward == 100:
                 break
 
-    debugger.write(f"accuracy: {accuracy * 100 / cluster_size}")
+    with open('debugger.txt', 'w') as debugger:
+        debugger.write(f"accuracy: {accuracy * 100 / cluster_size}")

@@ -1,0 +1,5 @@
+Loading Data
+start program
+Saving Data
+epoch: 5 time: 43.55497479438782
+loss: 3.8872549533843994

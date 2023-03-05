@@ -11,6 +11,7 @@ class Tumbler():
                 setattr(self, key, val)
             return
 
+        self.isUp = isUp
         self.upper = np.zeros([2, 5, 6])
         self.lower = np.zeros([2, 5, 6])
         self.hidden = np.zeros([1, 3, 6])
@@ -24,7 +25,6 @@ class Tumbler():
                     mat[row][col][elem] = 1
 
         # state of hidden. either above or below the main 2 barrels. 
-        self.isUp = isUp
         self.evaluate()
     
     def __str__(self):
