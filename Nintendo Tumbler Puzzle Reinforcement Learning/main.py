@@ -17,7 +17,11 @@ def Synthesize():
 
     counter = [table[1], table[0], table[3], table[2], table[4]]
     history = [Tumbler()] * (data_size + 1)
-    history[0] = state
+    history[0] = Tumbler([[1, 2, 3, 4, 5], 
+                          [1, 2, 3, 4, 5]], 
+                         [[1, 2, 3, 4, 5], 
+                          [1, 2, 3, 4, 5]], 
+                         [[0,    0,    0]])
     i = 0
 
     for elem in history:
@@ -52,6 +56,8 @@ def Load(fstream):
         Y[_i] = Y[it]
 
     if fstream == 'data.json':
+        model.compile(optimizer = 'adam', loss = 'mse')
+        model.fit(X, Y, batch_size = 64, epochs = 300, verbose = 0)
         return
 
     f = open('log.txt', 'r')
@@ -73,9 +79,6 @@ def Save(fstream):
     print("\nSaving Data")
     
     JSON = dict(zip([repr(elem.tolist()) for elem in X], Y))
-    bob = dict()
-    for _i in range(data_size):
-        bob[np.array2string(X[_i], separator = ", ", max_line_width = 1_000)] = float(Y[_i])
     json.dump(JSON, open(fstream, 'w'), indent = 4)
 
     if fstream == 'data.json':
@@ -96,22 +99,14 @@ Time = time.time()
 epoch = 1
 i = lim = 0
 table = [[1, 0, 0, 0, 0], [0, 1, 0, 0, 0], [0, 0, 1, 0, 0], [0, 0, 0, 1, 0], [0, 0, 0, 0, 1]]
-state = Tumbler([[1, 2, 3, 4, 5], 
-                 [1, 2, 3, 4, 5]], 
-                [[1, 2, 3, 4, 5], 
-                 [1, 2, 3, 4, 5]], 
-                [[0,    0,    0]])
 
 discount = 0.9
 data_size = 50_000
 cluster_size = 1_000
-shape = state.scrub_all().shape[1]
+shape = Tumbler().scrub_all().shape[1]
 X = np.zeros([data_size, shape], dtype = np.int8)
-Y = np.zeros([data_size], dtype = np.float32)
+Y = np.zeros([data_size], dtype = np.float64)
 
-#Synthesize()
-#Load('data.json')
-#Clear()
 
 model = keras.Sequential([
         keras.layers.Dense(125, activation = 'relu',
@@ -125,11 +120,14 @@ model = keras.Sequential([
         keras.layers.Dense(25, activation = 'relu'),
         keras.layers.Dense(5, activation = 'relu'),
         keras.layers.Dense(1)])
-model.compile(optimizer = 'adam', loss = 'mse')
 model.summary()
-model.fit(X, Y, batch_size = 64, epochs = 300, verbose = 0)
 
+#Synthesize()
+#Load('data.json')
+#Clear()
 Load('buffer.json')
+
+print("start program")
 for epoch in range(epoch, 1_000):
     Save('buffer.json')
 

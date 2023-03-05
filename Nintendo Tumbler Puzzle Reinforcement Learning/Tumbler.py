@@ -11,13 +11,13 @@ class Tumbler():
                 setattr(self, key, val)
             return
 
+        self.upper = np.zeros([2, 5, 6])
+        self.lower = np.zeros([2, 5, 6])
+        self.hidden = np.zeros([1, 3, 6])
         if not hidden:
             self.reward = 0
             return
 
-        self.upper = np.zeros([2, 5, 6])
-        self.lower = np.zeros([2, 5, 6])
-        self.hidden = np.zeros([1, 3, 6])
         for (mat, index) in zip([self.upper, self.lower, self.hidden], [upper, lower, hidden]):
             for row, arr in enumerate(index):
                 for col, elem in enumerate(arr):
