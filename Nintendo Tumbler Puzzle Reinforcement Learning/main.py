@@ -50,16 +50,17 @@ def Load(fstream):
     global epoch, i, lim, model
 
     data = json.load(open(fstream, 'r'))
-    for _i, (key, val) in enumerate(data.items()):
-        X[_i] = np.array(json.loads(key))
-        Y[_i] = val
-    for it, _i in enumerate(range(_i + 1, data_size)):
+    length = len(data.items())
+    X[:length] = [np.array(json.loads(elem)) for elem in data.keys()]
+    Y[:length] = list(data.values())
+
+    for it, _i in enumerate(range(length, data_size)):
         X[_i] = X[it]
         Y[_i] = Y[it]
 
     if fstream == 'data.json':
         model.compile(optimizer = 'adam', loss = 'mse')
-        model.fit(X, Y, batch_size = 64, epochs = 300, verbose = 0)
+        model.fit(X, Y, batch_size = 64, epochs = 100, verbose = 0)
         return
 
     f = open('log.txt', 'r')
@@ -100,7 +101,8 @@ def Clear():
 open('debugger.txt', 'w').close()
 Time = time.time()
 epoch = 1
-i = lim = 0
+i = lim = hare = 0
+tortoise = 100
 table = [[1, 0, 0, 0, 0], [0, 1, 0, 0, 0], [0, 0, 1, 0, 0], [0, 0, 0, 1, 0], [0, 0, 0, 0, 1]]
 
 discount = 0.9
@@ -125,9 +127,9 @@ model = keras.Sequential([
 model.summary()
 
 #Synthesize()
-#Load('data.json')
-#Clear()
-Load('buffer.json')
+Load('data.json')
+Clear()
+#Load('buffer.json')
 
 with open('debugger.txt', 'a') as debugger:
     debugger.write("start program\n")
@@ -135,7 +137,8 @@ for epoch in range(epoch, 1_000):
     Save('buffer.json')
 
     if i == data_size:
-        i = lim = 0
+        i = lim = hare = 0
+        tortoise = 100
     lim += cluster_size
     accuracy = 0
     while i < lim:
@@ -150,8 +153,9 @@ for epoch in range(epoch, 1_000):
                 state.move(table[random.randrange(0, 5)])
 
         # replay buffer
+        i = hare
         value = model.predict(state.scrub_all(), verbose = 0)
-        for temp in range(min(epoch, 50, data_size - i)):
+        for temp in range(min(2 * epoch, 2 * 50, data_size - i)):
             reward = state.reward
             action = table[value.argmax() if random.randrange(0, 100) < 95 else random.randrange(0, 5)]
             X[i] = state.scrub(action)
@@ -160,25 +164,31 @@ for epoch in range(epoch, 1_000):
             if state.reward == 100:
                 accuracy += 1
                 Y[i] = reward + discount * state.reward
+                i += 1
+
+                hare = i
+                break
             else:
                 value = model.predict(state.scrub_all(), verbose = 0)
                 Y[i] = reward + discount * value.max()
+                i += 1
 
-            # train model
-            i += 1
-            if not i % 100:
-                Qnew = keras.models.clone_model(model)
-                Qnew.compile(optimizer = 'adam', loss = 'mse')
-                loss = Qnew.fit(X, Y, batch_size = 64, epochs = 300, verbose = 0).history['loss'][-1]
-                model.set_weights(0.9 * np.array(model.get_weights(), dtype = object) + 0.1 * np.array(Qnew.get_weights(), dtype = object))
+        if i == data_size:
+            hare = i
+
+        # train model
+        if tortoise <= hare:
+            tortoise += 100
+
+            Qnew = keras.models.clone_model(model)
+            Qnew.compile(optimizer = 'adam', loss = 'mse')
+            loss = Qnew.fit(X, Y, batch_size = 64, epochs = 100, verbose = 0).history['loss'][-1]
+            model.set_weights(0.9 * np.array(model.get_weights(), dtype = object) + 0.1 * np.array(Qnew.get_weights(), dtype = object))
                 
-                text = f"loss: {loss}\n"
-                open('log.txt', 'a').write(text)
-                with open('debugger.txt', 'a') as debugger:
-                    debugger.write(text)
-
-            if state.reward == 100:
-                break
+            text = f"loss: {loss}\n"
+            open('log.txt', 'a').write(text)
+            with open('debugger.txt', 'a') as debugger:
+                debugger.write(text)
 
     with open('debugger.txt', 'a') as debugger:
-        debugger.write(f"accuracy: {accuracy * 100 / cluster_size}")
+        debugger.write(f"accuracy (expected to be between {50 / min(epoch, 50)}% and {100 / min(epoch, 50)}%): {accuracy * 100 / cluster_size} percent\n")
