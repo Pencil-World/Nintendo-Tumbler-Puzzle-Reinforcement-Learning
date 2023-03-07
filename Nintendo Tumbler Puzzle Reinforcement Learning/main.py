@@ -101,8 +101,7 @@ def Clear():
 open('debugger.txt', 'w').close()
 Time = time.time()
 epoch = 1
-i = lim = hare = 0
-tortoise = 100
+i = lim = 0
 table = [[1, 0, 0, 0, 0], [0, 1, 0, 0, 0], [0, 0, 1, 0, 0], [0, 0, 0, 1, 0], [0, 0, 0, 0, 1]]
 
 discount = 0.9
@@ -131,6 +130,8 @@ Load('data.json')
 Clear()
 #Load('buffer.json')
 
+tortoise = i // 100 + 1
+hare = i
 with open('debugger.txt', 'a') as debugger:
     debugger.write("start program\n")
 for epoch in range(epoch, 1_000):
