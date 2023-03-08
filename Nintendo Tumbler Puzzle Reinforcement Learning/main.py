@@ -130,7 +130,11 @@ Load('data.json')
 Clear()
 #Load('buffer.json')
 
-tortoise = i // 100 + 1
+Qnew = keras.models.clone_model(model)
+Qnew = keras.models.clone_model(model)
+Qnew = keras.models.clone_model(model)
+
+tortoise = (i // 100 + 1) * 100
 hare = i
 with open('debugger.txt', 'a') as debugger:
     debugger.write("start program\n")
@@ -154,7 +158,6 @@ for epoch in range(epoch, 1_000):
                 state.move(table[random.randrange(0, 5)])
 
         # replay buffer
-        i = hare
         value = model.predict(state.scrub_all(), verbose = 0)
         for temp in range(min(2 * epoch, 2 * 50, data_size - i)):
             reward = state.reward
@@ -176,6 +179,7 @@ for epoch in range(epoch, 1_000):
 
         if i == data_size:
             hare = i
+        i = hare
 
         # train model
         if tortoise <= hare:
@@ -183,7 +187,7 @@ for epoch in range(epoch, 1_000):
 
             Qnew = keras.models.clone_model(model)
             Qnew.compile(optimizer = 'adam', loss = 'mse')
-            loss = Qnew.fit(X, Y, batch_size = 64, epochs = 100, verbose = 0).history['loss'][-1]
+            loss = Qnew.fit(X, Y, batch_size = 64, epochs = 100, verbose = 0, shuffle = True).history['loss'][-1]
             model.set_weights(0.9 * np.array(model.get_weights(), dtype = object) + 0.1 * np.array(Qnew.get_weights(), dtype = object))
                 
             text = f"loss: {loss}\n"
