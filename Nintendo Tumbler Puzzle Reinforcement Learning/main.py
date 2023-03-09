@@ -1,4 +1,5 @@
 import copy
+import datetime
 import json
 from tensorflow import keras
 import numpy as np
@@ -90,7 +91,7 @@ def Save(fstream):
         # save() saves the weights, model architecture, training configuration, and optimizer to a HDF5. 
         # save_weights() only saves the weights to a HDF5. weights can be applied to another model architecture. 
         model.save('model.h5')
-        text = f"epoch: {epoch} time: {time.time() - Time}\n"
+        text = f"epoch: {epoch}\ntime: {time.time() - Time}\n"
         open('log.txt', 'a').write(text)
         debugger.write(text)
 
@@ -126,13 +127,9 @@ model = keras.Sequential([
 model.summary()
 
 #Synthesize()
-Load('data.json')
-Clear()
-#Load('buffer.json')
-
-Qnew = keras.models.clone_model(model)
-Qnew = keras.models.clone_model(model)
-Qnew = keras.models.clone_model(model)
+#Load('data.json')
+#Clear()
+Load('buffer.json')
 
 tortoise = (i // 100 + 1) * 100
 hare = i
@@ -161,7 +158,7 @@ for epoch in range(epoch, 1_000):
         value = model.predict(state.scrub_all(), verbose = 0)
         for temp in range(min(2 * epoch, 2 * 50, data_size - i)):
             reward = state.reward
-            action = table[value.argmax() if random.randrange(0, 100) < 95 else random.randrange(0, 5)]
+            action = table[value.argmax() if random.randrange(0, 100) < min(95, epoch * 100 / 25) else random.randrange(0, 5)]
             X[i] = state.scrub(action)
             state.move(action)
 
@@ -189,11 +186,11 @@ for epoch in range(epoch, 1_000):
             Qnew.compile(optimizer = 'adam', loss = 'mse')
             loss = Qnew.fit(X, Y, batch_size = 64, epochs = 100, verbose = 0, shuffle = True).history['loss'][-1]
             model.set_weights(0.9 * np.array(model.get_weights(), dtype = object) + 0.1 * np.array(Qnew.get_weights(), dtype = object))
-                
+
             text = f"loss: {loss}\n"
             open('log.txt', 'a').write(text)
             with open('debugger.txt', 'a') as debugger:
-                debugger.write(text)
+                debugger.write(f"{datetime.datetime.now()}" + text)
 
     with open('debugger.txt', 'a') as debugger:
         debugger.write(f"accuracy (expected to be between {50 / min(epoch, 50)}% and {100 / min(epoch, 50)}%): {accuracy * 100 / cluster_size} percent\n")
