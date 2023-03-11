@@ -158,7 +158,7 @@ for epoch in range(epoch, 1_000):
         value = model.predict(state.scrub_all(), verbose = 0)
         for temp in range(min(2 * epoch, 2 * 50, data_size - i)):
             reward = state.reward
-            action = table[value.argmax() if random.randrange(0, 100) < min(95, epoch * 100 / 25) else random.randrange(0, 5)]
+            action = table[value.argmax() if random.randrange(0, 100) < min(95, epoch * 100 // 25) else random.randrange(0, 5)]
             X[i] = state.scrub(action)
             state.move(action)
 
@@ -190,7 +190,7 @@ for epoch in range(epoch, 1_000):
             text = f"loss: {loss}\n"
             open('log.txt', 'a').write(text)
             with open('debugger.txt', 'a') as debugger:
-                debugger.write(f"{datetime.datetime.now()}" + text)
+                debugger.write(f"{datetime.datetime.now()} " + text)
 
     with open('debugger.txt', 'a') as debugger:
         debugger.write(f"accuracy (expected to be between {50 / min(epoch, 50)}% and {100 / min(epoch, 50)}%): {accuracy * 100 / cluster_size} percent\n")
