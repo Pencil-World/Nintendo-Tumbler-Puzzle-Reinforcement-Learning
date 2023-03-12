@@ -13,37 +13,9 @@ from Tumbler import Tumbler
 # print(model.predict(state.scrub_all()))
 # print(model.predict(X[0:1]))
 
-def Synthesize():
-    print("Synthesizing Data")
-
-    counter = [table[1], table[0], table[3], table[2], table[4]]
-    history = [Tumbler()] * (data_size + 1)
-    history[0] = Tumbler([[1, 2, 3, 4, 5], 
-                          [1, 2, 3, 4, 5]], 
-                         [[1, 2, 3, 4, 5], 
-                          [1, 2, 3, 4, 5]], 
-                         [[0,    0,    0]])
-    i = 0
-
-    for elem in history:
-        for action in range(5):
-            temp = copy.deepcopy(elem)
-            temp.move(counter[action])
-
-            if temp.reward != 100:
-                temp.reward += discount * elem.reward
-
-                if not temp in history:
-                    X[i] = temp.scrub(table[action])
-                    Y[i] = temp.reward
-                    i += 1
-                    history[i] = temp
-
-                    if not i % 100:
-                        print(Y[i - 100:i])
-                        if i == data_size:
-                            Save('data.json')
-                            return
+def Clear():
+    open('log.txt', 'w').close()
+    open('buffer.json', 'w').close()
 
 def Load(fstream):
     with open('debugger.txt', 'a') as debugger:
@@ -95,9 +67,11 @@ def Save(fstream):
         open('log.txt', 'a').write(text)
         debugger.write(text)
 
-def Clear():
-    open('log.txt', 'w').close()
-    open('buffer.json', 'w').close()
+def Test():
+    print("\nTest")
+    model = keras.models.load_model('model.h5')
+
+    table = np.zeros([9, 9])
 
 open('debugger.txt', 'w').close()
 Time = time.time()
@@ -150,9 +124,13 @@ for epoch in range(epoch, 1_000):
                         [[1, 2, 3, 4, 5], 
                          [1, 2, 3, 4, 5]], 
                         [[0,    0,    0]])
-        while state.reward == 100:
-            for temp in range(min(epoch, 50)):
-                state.move(table[random.randrange(0, 5)])
+
+        history = []
+        for temp in range(min(epoch, 50)):
+            state.move(table[random.randrange(0, 5)])
+            # monte carlo
+            if state.reward == 100 or temp in history:
+                break
 
         # replay buffer
         value = model.predict(state.scrub_all(), verbose = 0)
