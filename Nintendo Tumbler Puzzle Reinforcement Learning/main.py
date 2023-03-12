@@ -9,7 +9,7 @@ from Tumbler import Tumbler
 
 # https://www.geeksforgeeks.org/implementing-neural-networks-using-tensorflow/
 # lists are not type sensitive. numpy arrays are type sensitive. 
-# print(model.predict(np.array([state.scrub(table[4])])))
+# print(model.predict(np.array([state.scrub(actions[4])])))
 # print(model.predict(state.scrub_all()))
 # print(model.predict(X[0:1]))
 
@@ -30,11 +30,6 @@ def Load(fstream):
     for it, _i in enumerate(range(length, data_size)):
         X[_i] = X[it]
         Y[_i] = Y[it]
-
-    if fstream == 'data.json':
-        model.compile(optimizer = 'adam', loss = 'mse')
-        model.fit(X, Y, batch_size = 64, epochs = 100, verbose = 0)
-        return
 
     f = open('log.txt', 'r')
     log = f.read().split()
@@ -57,9 +52,6 @@ def Save(fstream):
         JSON = dict(zip([repr(elem.tolist()) for elem in X], Y))
         json.dump(JSON, open(fstream, 'w'), indent = 4)
 
-        if fstream == 'data.json':
-            return
-
         # save() saves the weights, model architecture, training configuration, and optimizer to a HDF5. 
         # save_weights() only saves the weights to a HDF5. weights can be applied to another model architecture. 
         model.save('model.h5')
@@ -71,15 +63,15 @@ def Test():
     print("\nTest")
     model = keras.models.load_model('model.h5')
 
-    table = np.zeros([9, 9])
+    actions = np.zeros([9, 9])
 
 open('debugger.txt', 'w').close()
 Time = time.time()
 epoch = 1
 i = lim = 0
-table = [[1, 0, 0, 0, 0], [0, 1, 0, 0, 0], [0, 0, 1, 0, 0], [0, 0, 0, 1, 0], [0, 0, 0, 0, 1]]
+actions = [[1, 0, 0, 0, 0], [0, 1, 0, 0, 0], [0, 0, 1, 0, 0], [0, 0, 0, 1, 0], [0, 0, 0, 0, 1]]
 
-discount = 0.9
+discount = 0.99
 data_size = 50_000
 cluster_size = 1_000
 shape = Tumbler().scrub_all().shape[1]
@@ -98,13 +90,15 @@ model = keras.Sequential([
         keras.layers.Dense(25, activation = 'relu'),
         keras.layers.Dense(5, activation = 'relu'),
         keras.layers.Dense(1)])
-model.summary()
+model.compile(optimizer = 'adam', loss = 'mse')
+model.fit(X, Y, batch_size = 64, epochs = 100, verbose = 0)
 
 #Synthesize()
 #Load('data.json')
 #Clear()
 Load('buffer.json')
 
+model.summary()
 tortoise = (i // 100 + 1) * 100
 hare = i
 with open('debugger.txt', 'a') as debugger:
@@ -124,19 +118,16 @@ for epoch in range(epoch, 1_000):
                         [[1, 2, 3, 4, 5], 
                          [1, 2, 3, 4, 5]], 
                         [[0,    0,    0]])
-
-        history = []
-        for temp in range(min(epoch, 50)):
-            state.move(table[random.randrange(0, 5)])
-            # monte carlo
-            if state.reward == 100 or temp in history:
-                break
+        while state.reward == 100:
+            for temp in range(min(epoch, 50)):
+                state.move(actions[random.randrange(0, 5)])
 
         # replay buffer
+        history = []
         value = model.predict(state.scrub_all(), verbose = 0)
         for temp in range(min(2 * epoch, 2 * 50, data_size - i)):
             reward = state.reward
-            action = table[value.argmax() if random.randrange(0, 100) < min(95, epoch * 100 // 25) else random.randrange(0, 5)]
+            action = actions[value.argmax() if random.randrange(0, 100) < min(95, epoch * 100 // 25) else random.randrange(0, 5)]
             X[i] = state.scrub(action)
             state.move(action)
 
@@ -152,9 +143,19 @@ for epoch in range(epoch, 1_000):
                 Y[i] = reward + discount * value.max()
                 i += 1
 
-        if i == data_size:
-            hare = i
-        i = hare
+        reward = 100
+        backup = i
+        for action in history[::-1]:
+            # counter
+            i -= 1
+            reward = state.reward
+            state.move(action)
+
+            if state.reward == 100:
+                accuracy += 1
+                reward = reward + discount * state.reward
+                Y[i] = Y[i] + alpha * (reward - Y[i])
+                i += 1#remove?
 
         # train model
         if tortoise <= hare:
